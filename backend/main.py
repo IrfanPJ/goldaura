@@ -18,15 +18,16 @@ from nanobanana import generate_tryon
 from styler import select_jewelry_set, load_dataset, DIFFUSION_PROMPTS
 
 # ── App setup ────────────────────────────────────────────────────
-app = Flask(__name__, static_folder="../frontend", static_url_path="")
-# CORS — allow frontend dev server
-CORS(app)
-
 # Directories
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
 OUTPUTS_DIR = os.path.join(BASE_DIR, "outputs")
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
+
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
+# CORS — allow frontend dev server
+CORS(app)
 
 
 # ── Helper ───────────────────────────────────────────────────────
