@@ -52,12 +52,12 @@ def _save_result(image: Image.Image) -> str:
 
 @app.route("/", methods=["GET"])
 def root():
-    return app.send_static_file("index.html")
+    return send_from_directory(app.static_folder, "index.html")
 
 @app.route("/<path:path>", methods=["GET"])
 def serve_frontend(path):
     if os.path.exists(os.path.join(app.static_folder, path)):
-        return app.send_static_file(path)
+        return send_from_directory(app.static_folder, path)
     return jsonify({"detail": "Not found"}), 404
 
 @app.route("/health", methods=["GET"])
