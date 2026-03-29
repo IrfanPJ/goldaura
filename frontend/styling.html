@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Gold Styling — GoldAura</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">💎</span>
+                <span class="logo-text">GoldAura</span>
+            </a>
+            <div class="nav-links">
+                <a href="tryon.html" class="nav-link">Try-On</a>
+                <a href="styling.html" class="nav-link active">AI Styling</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main page-wrapper">
+        <div class="page-header">
+            <h1 class="page-title">⚖️ AI Gold Styling</h1>
+            <p class="page-subtitle">Enter your total gold weight and let AI create the perfect jewelry combination</p>
+        </div>
+
+        <div class="app-grid">
+            <!-- Left Panel -->
+            <div class="panel">
+                <!-- Image Upload -->
+                <div class="glass-card p-24">
+                    <label class="input-label">Upload your full body photo</label>
+                    <div class="dropzone" id="style-dropzone">
+                        <div class="placeholder-content" id="style-placeholder">
+                            <div class="icon-lg">📷</div>
+                            <p>Click or drag & drop</p>
+                            <small>JPG, PNG up to 10MB</small>
+                        </div>
+                        <img id="style-preview-img" class="upload-preview hidden" alt="Preview">
+                        <input type="file" id="style-file-input" accept="image/*" class="hidden">
+                    </div>
+                    <button class="btn btn-clear hidden" id="style-clear-btn">&times; Remove Image</button>
+                </div>
+
+                <!-- Gold Weight Settings -->
+                <div class="glass-card p-24">
+                    <label class="input-label">Total Gold Weight (grams)</label>
+                    
+                    <div class="presets" id="style-presets">
+                        <button class="preset" data-val="25">25g</button>
+                        <button class="preset" data-val="50">50g</button>
+                        <button class="preset" data-val="75">75g</button>
+                        <button class="preset active" data-val="100">100g</button>
+                        <button class="preset" data-val="150">150g</button>
+                        <button class="preset" data-val="200">200g</button>
+                    </div>
+
+                    <div class="slider-wrap">
+                        <input type="range" id="style-slider" min="10" max="500" step="5" value="100" class="slider">
+                        <div class="slider-labels">
+                            <span>10g</span>
+                            <span>500g</span>
+                        </div>
+                    </div>
+
+                    <div class="gram-input-group">
+                        <input type="number" id="style-number-input" min="10" max="500" value="100" class="number-input">
+                        <span class="gram-unit">grams</span>
+                    </div>
+
+                    <!-- Distribution -->
+                    <div class="distribution-preview">
+                        <h4>Weight Distribution</h4>
+                        <div class="dist-row">
+                            <span>📿 Necklace</span>
+                            <span class="dist-val" id="dist-necklace">40g (40%)</span>
+                        </div>
+                        <div class="dist-row">
+                            <span>⭕ Bangles</span>
+                            <span class="dist-val" id="dist-bangle">35g (35%)</span>
+                        </div>
+                        <div class="dist-row">
+                            <span>✨ Earrings</span>
+                            <span class="dist-val" id="dist-earring">15g (15%)</span>
+                        </div>
+                        <div class="dist-row">
+                            <span>💍 Rings</span>
+                            <span class="dist-val" id="dist-ring">10g (10%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-gold full-width" id="btn-generate" disabled>⚖️ Generate Styled Look</button>
+                <div id="style-error" class="error-msg hidden"></div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="panel">
+                <div class="glass-card p-24 result-panel">
+                    <h3 class="result-title">✨ Result</h3>
+                    <div class="result-image-wrapper">
+                        <img id="style-result-img" class="hidden result-img" alt="Result">
+                        <div id="style-empty-state" class="empty-state">
+                            <div class="icon-xl">⚖️</div>
+                            <p>Your styled result will appear here</p>
+                        </div>
+                    </div>
+
+                    <div id="style-details" class="hidden style-details">
+                        <h4>Selected Items</h4>
+                        <div id="style-items-list" class="items-list"></div>
+                        <div class="total-row">
+                            <span>Total Actual</span>
+                            <span id="style-total-actual">0g / 100g</span>
+                        </div>
+                    </div>
+
+                    <div id="style-result-actions" class="hidden mt-16">
+                        <button class="btn btn-gold" id="btn-download-style">⬇ Download Image</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

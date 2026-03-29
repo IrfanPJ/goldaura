@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Try-On — GoldAura</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">💎</span>
+                <span class="logo-text">GoldAura</span>
+            </a>
+            <div class="nav-links">
+                <a href="tryon.html" class="nav-link active">Try-On</a>
+                <a href="styling.html" class="nav-link">AI Styling</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main page-wrapper">
+        <div class="page-header">
+            <h1 class="page-title">🪞 Virtual Try-On</h1>
+            <p class="page-subtitle">Upload your photo, select a jewelry piece, and see how it looks</p>
+        </div>
+
+        <div class="app-grid">
+            <!-- Left Panel -->
+            <div class="panel">
+                <!-- Image Upload -->
+                <div class="glass-card p-24">
+                    <label class="input-label">Upload your photo</label>
+                    <div class="dropzone" id="tryon-dropzone">
+                        <div class="placeholder-content" id="tryon-placeholder">
+                            <div class="icon-lg">📷</div>
+                            <p>Click or drag & drop</p>
+                            <small>JPG, PNG up to 10MB</small>
+                        </div>
+                        <img id="tryon-preview-img" class="upload-preview hidden" alt="Preview">
+                        <input type="file" id="tryon-file-input" accept="image/*" class="hidden">
+                    </div>
+                    <button class="btn btn-clear hidden" id="tryon-clear-btn">&times; Remove Image</button>
+                </div>
+
+                <!-- Jewelry Selector -->
+                <div class="glass-card p-24">
+                    <label class="input-label">Select Jewelry</label>
+                    <div class="filter-tabs" id="tryon-filters">
+                        <button class="tab active" data-filter="all">💎 All</button>
+                        <button class="tab" data-filter="necklace">📿 Necklaces</button>
+                        <button class="tab" data-filter="earring">✨ Earrings</button>
+                        <button class="tab" data-filter="bangle">⭕ Bangles</button>
+                        <button class="tab" data-filter="ring">💍 Rings</button>
+                    </div>
+                    <div class="jewelry-grid" id="tryon-jewelry-grid">
+                        <div class="loading-spinner">Loading dataset...</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-gold full-width" id="btn-tryon" disabled>🪞 Try It On</button>
+                <div id="tryon-error" class="error-msg hidden"></div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="panel">
+                <div class="glass-card p-24 result-panel">
+                    <h3 class="result-title">✨ Result</h3>
+                    <div class="result-image-wrapper">
+                        <img id="tryon-result-img" class="hidden result-img" alt="Result">
+                        <div id="tryon-empty-state" class="empty-state">
+                            <div class="icon-xl">🪞</div>
+                            <p>Your try-on result will appear here</p>
+                        </div>
+                    </div>
+                    <div id="tryon-result-actions" class="hidden mt-16">
+                        <button class="btn btn-gold" id="btn-download-tryon">⬇ Download Image</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
