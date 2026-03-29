@@ -1,0 +1,86 @@
+[
+  {
+    "id": "necklace1",
+    "type": "necklace",
+    "name": "Classic Gold Chain",
+    "weight": 20,
+    "image": "necklaces/necklace1.png"
+  },
+  {
+    "id": "necklace2",
+    "type": "necklace",
+    "name": "Temple Gold Necklace",
+    "weight": 35,
+    "image": "necklaces/necklace2.png"
+  },
+  {
+    "id": "necklace3",
+    "type": "necklace",
+    "name": "Choker Gold Set",
+    "weight": 50,
+    "image": "necklaces/necklace3.png"
+  },
+  {
+    "id": "earring1",
+    "type": "earring",
+    "name": "Gold Stud Earring",
+    "weight": 3,
+    "image": "earrings/earring1.png"
+  },
+  {
+    "id": "earring2",
+    "type": "earring",
+    "name": "Gold Jhumka Earring",
+    "weight": 8,
+    "image": "earrings/earring2.png"
+  },
+  {
+    "id": "earring3",
+    "type": "earring",
+    "name": "Gold Drop Earring",
+    "weight": 5,
+    "image": "earrings/earring3.png"
+  },
+  {
+    "id": "bangle1",
+    "type": "bangle",
+    "name": "Plain Gold Bangle",
+    "weight": 10,
+    "image": "bangles/bangle1.png"
+  },
+  {
+    "id": "bangle2",
+    "type": "bangle",
+    "name": "Designer Gold Bangle",
+    "weight": 15,
+    "image": "bangles/bangle2.png"
+  },
+  {
+    "id": "bangle3",
+    "type": "bangle",
+    "name": "Heavy Gold Kada",
+    "weight": 25,
+    "image": "bangles/bangle3.png"
+  },
+  {
+    "id": "ring1",
+    "type": "ring",
+    "name": "Gold Band Ring",
+    "weight": 3,
+    "image": "rings/ring1.png"
+  },
+  {
+    "id": "ring2",
+    "type": "ring",
+    "name": "Gold Signet Ring",
+    "weight": 5,
+    "image": "rings/ring2.png"
+  },
+  {
+    "id": "ring3",
+    "type": "ring",
+    "name": "Gold Stone Ring",
+    "weight": 8,
+    "image": "rings/ring3.png"
+  }
+]
