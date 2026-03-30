@@ -1,3 +1,12 @@
+---
+title: GoldAura
+emoji: 💎
+colorFrom: yellow
+colorTo: gray
+sdk: docker
+app_port: 7860
+---
+
 # 💎 GoldAura — AI Jewelry Virtual Try-On & Styling App
 
 An MVP web application that lets users virtually try on gold jewelry using AI-powered body landmark detection, and get smart styling recommendations based on gold weight.
