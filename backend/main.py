@@ -45,6 +45,13 @@ def _read_upload_image(file_bytes: bytes) -> Image.Image:
     except Exception:
         return None
 
+def _image_to_b64(image: Image.Image) -> str:
+    """Encode PIL image as base64 PNG string."""
+    import base64
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
 def _save_result(image: Image.Image) -> str:
     """Save result image and return filename."""
     filename = f"result_{uuid.uuid4().hex[:8]}.png"
@@ -125,6 +132,7 @@ def try_on():
     return jsonify({
         "success": True,
         "result_image": f"/outputs/{filename}",
+        "result_image_b64": _image_to_b64(result),
         "jewelry_applied": jewelry_item,
     })
 
@@ -178,6 +186,7 @@ def try_on_multi():
     return jsonify({
         "success": True,
         "result_image": f"/outputs/{filename}",
+        "result_image_b64": _image_to_b64(current_image),
         "applied_items": applied_items,
         "total_applied": len(applied_items),
         "total_requested": len(items_to_apply),
@@ -269,6 +278,7 @@ def generate_style():
     return jsonify({
         "success": True,
         "result_image": f"/outputs/{filename}",
+        "result_image_b64": _image_to_b64(current_image),
         "distribution": styling_result["distribution"],
         "selected_items": applied_items,
         "total_weight_requested": styling_result["total_weight_requested"],

@@ -158,7 +158,7 @@ function setupTryOnPage() {
                 progressText.textContent = `Done! Applied ${data.total_applied} of ${data.total_requested} items`;
             }
 
-            showResult("tryon", `${API}${data.result_image}`);
+            showResult("tryon", data.result_image_b64 ? `data:image/png;base64,${data.result_image_b64}` : `${API}${data.result_image}`);
 
             // Show applied items summary
             const appliedItems = data.applied_items || [data.jewelry_applied];
@@ -452,7 +452,7 @@ function setupStylingPage() {
 
             if (!res.ok) throw new Error(data.detail || "Error");
 
-            showResult("style", `${API}${data.result_image}`);
+            showResult("style", data.result_image_b64 ? `data:image/png;base64,${data.result_image_b64}` : `${API}${data.result_image}`);
 
             // Show details
             const detailContainer = document.getElementById("style-details");
