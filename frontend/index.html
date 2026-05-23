@@ -3,66 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoldAura — AI Jewelry Virtual Try-On</title>
+    <title>GoldAura — High Jewelry Try-On Studio</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>if(localStorage.getItem('ga-theme')==='light')document.documentElement.classList.add('light')</script>
 </head>
 <body>
+
     <nav class="navbar">
         <div class="nav-inner">
             <a href="index.html" class="logo">
-                <span class="logo-icon">💎</span>
+                <span class="logo-icon">✧</span>
                 <span class="logo-text">GoldAura</span>
             </a>
             <div class="nav-links">
-                <a href="tryon.html" class="nav-link">Try-On</a>
+                <a href="tryon.html" class="nav-link">Virtual Try-On</a>
                 <a href="styling.html" class="nav-link">AI Styling</a>
+                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle light / dark">◐</button>
             </div>
         </div>
     </nav>
 
     <main class="main">
+
+        <!-- ─── HERO ─────────────────────────────────────── -->
         <section class="hero">
-            <div class="hero-glow"></div>
-            <div class="hero-content fade-in">
-                <span class="badge">✨ AI-Powered Jewelry Experience</span>
-                <h1 class="hero-title">
-                    Try On Gold Jewelry<br>
-                    <span class="gradient-text">Virtually</span>
-                </h1>
-                <p class="hero-description">
-                    Upload your photo, select jewelry, and see how stunning gold pieces look on you — powered by AI body detection.
-                </p>
-                <div class="ctas">
-                    <a href="tryon.html" class="btn btn-gold">🪞 Virtual Try-On</a>
-                    <a href="styling.html" class="btn btn-outline">⚖️ AI Gold Styling</a>
+
+            <!-- Animated decorative ring -->
+            <div class="hero-bg-ring" aria-hidden="true">
+                <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="300" cy="300" r="282" fill="none" stroke="rgba(212,175,55,0.06)" stroke-width="1"/>
+                    <circle cx="300" cy="300" r="244" fill="none" stroke="rgba(212,175,55,0.035)" stroke-width="0.5" stroke-dasharray="3 9"/>
+                    <circle cx="300" cy="300" r="282" fill="none" stroke="rgba(212,175,55,0.28)" stroke-width="1.5" stroke-dasharray="55 1718" class="ring-arc"/>
+                    <circle cx="300" cy="300" r="244" fill="none" stroke="rgba(212,175,55,0.18)" stroke-width="1" stroke-dasharray="28 1507" class="ring-arc-2"/>
+                    <circle cx="300" cy="18"  r="3"   fill="rgba(212,175,55,0.5)"/>
+                    <circle cx="582" cy="300" r="2"   fill="rgba(212,175,55,0.3)"/>
+                    <circle cx="300" cy="582" r="2"   fill="rgba(212,175,55,0.3)"/>
+                    <circle cx="18"  cy="300" r="2"   fill="rgba(212,175,55,0.3)"/>
+                </svg>
+            </div>
+
+            <!-- Floating sparkle particles -->
+            <div class="hero-sparkles" aria-hidden="true">
+                <span class="sparkle" style="--dur:5s;--delay:0s;left:11%;top:34%">✧</span>
+                <span class="sparkle" style="--dur:7s;--delay:1.2s;left:83%;top:21%">✦</span>
+                <span class="sparkle" style="--dur:4.5s;--delay:0.6s;left:64%;top:69%">✧</span>
+                <span class="sparkle" style="--dur:6s;--delay:2.5s;left:27%;top:73%">·</span>
+                <span class="sparkle" style="--dur:5.5s;--delay:1.8s;left:75%;top:43%">✦</span>
+                <span class="sparkle" style="--dur:8s;--delay:3.2s;left:44%;top:17%">✧</span>
+                <span class="sparkle" style="--dur:4s;--delay:0.3s;left:91%;top:61%">·</span>
+                <span class="sparkle" style="--dur:6.5s;--delay:4s;left:5%;top:56%">✦</span>
+            </div>
+
+            <!-- Content -->
+            <div class="hero-eyebrow">
+                <span class="eyebrow-line"></span>
+                <span>GoldAura Digital Atelier</span>
+                <span class="eyebrow-line"></span>
+            </div>
+
+            <h1 class="hero-title">
+                Adorn Yourself
+                <span class="hero-title-line2">Try·On Studio</span>
+            </h1>
+
+            <p class="hero-sub">
+                The first AI-powered system for bespoke<br>
+                gold jewelry visualization.
+            </p>
+
+            <div class="hero-ctas">
+                <a href="tryon.html" class="btn btn-gold">Enter Studio</a>
+                <a href="styling.html" class="btn btn-outline">AI Styling</a>
+            </div>
+
+            <div class="scroll-hint" aria-hidden="true">
+                <span class="scroll-label">Explore</span>
+                <span class="scroll-arrow">↓</span>
+            </div>
+        </section>
+
+        <!-- ─── MARQUEE ───────────────────────────────────── -->
+        <div class="marquee-wrapper" aria-hidden="true">
+            <div class="marquee">
+                <span>Virtual Try-On</span><span class="m-dot">✧</span>
+                <span>AI Gold Styling</span><span class="m-dot">✧</span>
+                <span>Gemini 2.0 Flash</span><span class="m-dot">✧</span>
+                <span>Bespoke Curation</span><span class="m-dot">✧</span>
+                <span>High Jewelry</span><span class="m-dot">✧</span>
+                <span>Portrait Preservation</span><span class="m-dot">✧</span>
+                <span>24K Gold</span><span class="m-dot">✧</span>
+                <span>Digital Atelier</span><span class="m-dot">✧</span>
+                <!-- Duplicate for seamless loop -->
+                <span>Virtual Try-On</span><span class="m-dot">✧</span>
+                <span>AI Gold Styling</span><span class="m-dot">✧</span>
+                <span>Gemini 2.0 Flash</span><span class="m-dot">✧</span>
+                <span>Bespoke Curation</span><span class="m-dot">✧</span>
+                <span>High Jewelry</span><span class="m-dot">✧</span>
+                <span>Portrait Preservation</span><span class="m-dot">✧</span>
+                <span>24K Gold</span><span class="m-dot">✧</span>
+                <span>Digital Atelier</span><span class="m-dot">✧</span>
+            </div>
+        </div>
+
+        <!-- ─── STATS BAND ────────────────────────────────── -->
+        <section class="stats-band">
+            <div class="stats-band-inner">
+                <div class="stat-block" data-reveal>
+                    <span class="stat-big-num">03</span>
+                    <span class="stat-big-label">AI Phases</span>
+                </div>
+                <div class="stat-band-div"></div>
+                <div class="stat-block" data-reveal data-delay="1">
+                    <span class="stat-big-num">24+</span>
+                    <span class="stat-big-label">Jewelry Pieces</span>
+                </div>
+                <div class="stat-band-div"></div>
+                <div class="stat-block" data-reveal data-delay="2">
+                    <span class="stat-big-num">40g</span>
+                    <span class="stat-big-label">Min. Gold Weight</span>
+                </div>
+                <div class="stat-band-div"></div>
+                <div class="stat-block" data-reveal data-delay="3">
+                    <span class="stat-big-num">∞</span>
+                    <span class="stat-big-label">Combinations</span>
                 </div>
             </div>
         </section>
 
-        <section class="features">
-            <div class="glass-card feature-card">
-                <div class="feature-icon">🪞</div>
-                <h3>Virtual Try-On</h3>
-                <p>Upload a photo, select a necklace, earring, or bangle, and see it realistically overlaid.</p>
-                <a href="tryon.html" class="feature-link">Try it &rarr;</a>
-            </div>
-            <div class="glass-card feature-card">
-                <div class="feature-icon">⚖️</div>
-                <h3>Gold Weight Styling</h3>
-                <p>Enter your total gold weight and let AI select the perfect combination of jewelry.</p>
-                <a href="styling.html" class="feature-link">Style me &rarr;</a>
-            </div>
-            <div class="glass-card feature-card">
-                <div class="feature-icon">💾</div>
-                <h3>Save & Download</h3>
-                <p>Download your styled images instantly to share with family or your jeweler.</p>
+        <!-- ─── FEATURES — editorial grid ────────────────── -->
+        <section class="features-section">
+            <div class="section-label"><span>✧ Capabilities</span></div>
+            <h2 class="section-h2">The Complete <em>Atelier Suite</em></h2>
+
+            <div class="features-editorial">
+                <div class="feat-card feat-card--large" data-reveal>
+                    <span class="feat-num">01</span>
+                    <div class="feat-icon">✧</div>
+                    <h3>Virtual Try-On</h3>
+                    <p>Upload a high-resolution portrait and our AI composites any jewelry piece onto your photograph with perfect lighting, shadows, and anatomical placement. Your identity is preserved exactly — only the jewelry is added.</p>
+                    <a href="tryon.html" class="feat-link">Enter Studio &rarr;</a>
+                </div>
+                <div class="feat-stack">
+                    <div class="feat-card feat-card--small" data-reveal data-delay="1">
+                        <span class="feat-num">02</span>
+                        <div class="feat-icon">⚖</div>
+                        <h3>AI Gold Styling</h3>
+                        <p>Specify your total gold weight and our engine intelligently distributes it across necklace, bangles, earrings, and rings — curated for balance and beauty.</p>
+                        <a href="styling.html" class="feat-link">Curate Look &rarr;</a>
+                    </div>
+                    <div class="feat-card feat-card--small" data-reveal data-delay="2">
+                        <span class="feat-num">03</span>
+                        <div class="feat-icon">⟢</div>
+                        <h3>Export &amp; Share</h3>
+                        <p>Download high-fidelity renders for artisanal consultation, social sharing, or archiving your curated jewelry looks.</p>
+                    </div>
+                </div>
             </div>
         </section>
+
+        <!-- ─── HOW IT WORKS ──────────────────────────────── -->
+        <section class="process-section">
+            <div class="section-label centered"><span>✧ Process</span></div>
+            <h2 class="section-h2 centered">How It <em>Works</em></h2>
+
+            <div class="steps-row">
+                <div class="step-item" data-reveal data-delay="1">
+                    <div class="step-number">01</div>
+                    <div class="step-connector" aria-hidden="true"></div>
+                    <h4>Upload Portrait</h4>
+                    <p>Provide a high-resolution portrait photo. Front-facing or three-quarter angle gives the most realistic result.</p>
+                </div>
+                <div class="step-item" data-reveal data-delay="2">
+                    <div class="step-number">02</div>
+                    <div class="step-connector" aria-hidden="true"></div>
+                    <h4>Curate Ensemble</h4>
+                    <p>Select individual pieces from the collection, or specify a gold weight for a fully AI-curated ensemble styling.</p>
+                </div>
+                <div class="step-item" data-reveal data-delay="3">
+                    <div class="step-number">03</div>
+                    <h4>AI Renders</h4>
+                    <p>Gemini 2.0 Flash edits your photo in-place — adding jewelry with perfect lighting, perspective, and photorealism.</p>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <footer>
-        <p>GoldAura &copy; 2026</p>
+        <div class="footer-inner">
+            <a href="index.html" class="footer-brand">
+                <span class="logo-icon">✧</span>
+                <span>GoldAura</span>
+            </a>
+            <div class="footer-links">
+                <a href="tryon.html">Virtual Try-On</a>
+                <a href="styling.html">AI Styling</a>
+            </div>
+            <p class="footer-copy">Digital Atelier &copy; 2026</p>
+        </div>
     </footer>
+
+    <script src="app.js"></script>
 </body>
 </html>

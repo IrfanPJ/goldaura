@@ -5,81 +5,140 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virtual Try-On — GoldAura</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>if(localStorage.getItem('ga-theme')==='light')document.documentElement.classList.add('light')</script>
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-inner">
             <a href="index.html" class="logo">
-                <span class="logo-icon">💎</span>
+                <span class="logo-icon">✧</span>
                 <span class="logo-text">GoldAura</span>
             </a>
             <div class="nav-links">
-                <a href="tryon.html" class="nav-link active">Try-On</a>
+                <a href="tryon.html" class="nav-link active">Virtual Try-On</a>
                 <a href="styling.html" class="nav-link">AI Styling</a>
+                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Toggle light / dark">◐</button>
             </div>
         </div>
     </nav>
 
     <main class="main page-wrapper">
+
         <div class="page-header">
-            <h1 class="page-title">🪞 Virtual Try-On</h1>
-            <p class="page-subtitle">Upload your photo, select a jewelry piece, and see how it looks</p>
+            <span class="page-eyebrow">✧ Virtual Try-On</span>
+            <h1 class="page-title">Curate Your <em>Ensemble</em></h1>
+            <p class="page-subtitle">Upload a portrait, select your pieces, and let AI render your look.</p>
         </div>
 
         <div class="app-grid">
-            <!-- Left Panel -->
+
+            <!-- ── Left Panel ── -->
             <div class="panel">
-                <!-- Image Upload -->
+
+                <!-- I. Portrait Upload -->
                 <div class="glass-card p-24">
-                    <label class="input-label">Upload your photo</label>
+                    <div class="card-step-header">
+                        <span class="card-step-num">I</span>
+                        <span class="card-step-title">Subject Portrait</span>
+                    </div>
                     <div class="dropzone" id="tryon-dropzone">
                         <div class="placeholder-content" id="tryon-placeholder">
-                            <div class="icon-lg">📷</div>
-                            <p>Click or drag & drop</p>
-                            <small>JPG, PNG up to 10MB</small>
+                            <div class="dz-icon">↑</div>
+                            <p>Drop your portrait here</p>
+                            <span class="dz-hint">or click to browse · JPG, PNG</span>
                         </div>
                         <img id="tryon-preview-img" class="upload-preview hidden" alt="Preview">
                         <input type="file" id="tryon-file-input" accept="image/*" class="hidden">
                     </div>
-                    <button class="btn btn-clear hidden" id="tryon-clear-btn">&times; Remove Image</button>
+                    <button class="btn btn-clear hidden" id="tryon-clear-btn">✕ Remove Image</button>
                 </div>
 
-                <!-- Jewelry Selector -->
+                <!-- II. Selected Ensemble -->
+                <div class="glass-card p-24 selected-section" id="selected-section">
+                    <div class="card-step-header">
+                        <span class="card-step-num">II</span>
+                        <span class="card-step-title">Curated Ensemble</span>
+                        <span class="selected-count" id="selected-count">0 selected</span>
+                    </div>
+                    <div class="selected-chips" id="selected-chips">
+                        <div class="empty-chips">No pieces selected — browse the collection below</div>
+                    </div>
+                    <button class="btn btn-clear-all hidden" id="btn-clear-all">Clear all</button>
+                </div>
+
+                <!-- III. The Collection -->
                 <div class="glass-card p-24">
-                    <label class="input-label">Select Jewelry</label>
+                    <div class="card-step-header">
+                        <span class="card-step-num">III</span>
+                        <span class="card-step-title">The Collection</span>
+                    </div>
                     <div class="filter-tabs" id="tryon-filters">
-                        <button class="tab active" data-filter="all">💎 All</button>
-                        <button class="tab" data-filter="necklace">📿 Necklaces</button>
-                        <button class="tab" data-filter="earring">✨ Earrings</button>
-                        <button class="tab" data-filter="bangle">⭕ Bangles</button>
-                        <button class="tab" data-filter="ring">💍 Rings</button>
+                        <button class="tab active" data-filter="all">All</button>
+                        <button class="tab" data-filter="necklace">Necklaces</button>
+                        <button class="tab" data-filter="earring">Earrings</button>
+                        <button class="tab" data-filter="bangle">Bangles</button>
+                        <button class="tab" data-filter="ring">Rings</button>
                     </div>
                     <div class="jewelry-grid" id="tryon-jewelry-grid">
-                        <div class="loading-spinner">Loading dataset...</div>
+                        <div class="vault-loading">
+                            <span class="vault-spinner">✧</span>
+                            <span>Accessing vault…</span>
+                        </div>
                     </div>
                 </div>
 
-                <button class="btn btn-gold full-width" id="btn-tryon" disabled>🪞 Try It On</button>
+                <!-- IV. Suggestions -->
+                <div class="glass-card p-24 suggestions-section hidden" id="suggestions-section">
+                    <div class="card-step-header">
+                        <span class="card-step-num">✦</span>
+                        <span class="card-step-title">Atelier Recommendations</span>
+                    </div>
+                    <p class="suggestion-hint">Curated pairings based on your selection</p>
+                    <div class="suggestions-grid" id="suggestions-grid"></div>
+                </div>
+
+                <!-- Render -->
+                <button class="btn btn-gold full-width render-btn" id="btn-tryon" disabled>
+                    <span class="render-btn-icon">✧</span>
+                    Render Ensemble
+                </button>
+                <div id="tryon-progress" class="progress-bar hidden">
+                    <div class="progress-fill" id="tryon-progress-fill"></div>
+                    <span class="progress-text" id="tryon-progress-text">Applying pieces…</span>
+                </div>
                 <div id="tryon-error" class="error-msg hidden"></div>
             </div>
 
-            <!-- Right Panel -->
-            <div class="panel">
+            <!-- ── Right Panel ── -->
+            <div class="panel panel-sticky">
                 <div class="glass-card p-24 result-panel">
-                    <h3 class="result-title">✨ Result</h3>
+                    <div class="result-header">
+                        <h3 class="result-title">Final Render</h3>
+                    </div>
                     <div class="result-image-wrapper">
                         <img id="tryon-result-img" class="hidden result-img" alt="Result">
                         <div id="tryon-empty-state" class="empty-state">
-                            <div class="icon-xl">🪞</div>
-                            <p>Your try-on result will appear here</p>
+                            <div class="empty-ring" aria-hidden="true">
+                                <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(212,175,55,0.12)" stroke-width="1"/>
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(212,175,55,0.45)" stroke-width="1.5" stroke-dasharray="22 292" class="empty-ring-arc"/>
+                                </svg>
+                            </div>
+                            <div class="empty-icon">✧</div>
+                            <p>Your render will appear here</p>
+                            <span>Upload a portrait and select jewelry to begin</span>
                         </div>
                     </div>
                     <div id="tryon-result-actions" class="hidden mt-16">
-                        <button class="btn btn-gold" id="btn-download-tryon">⬇ Download Image</button>
+                        <button class="btn btn-outline full-width" id="btn-download-tryon">↓ Download High-Res</button>
+                    </div>
+                    <div id="tryon-applied-summary" class="applied-summary hidden">
+                        <h4>Applied Ensemble</h4>
+                        <div id="applied-items-list" class="applied-items-list"></div>
                     </div>
                 </div>
             </div>
+
         </div>
     </main>
 

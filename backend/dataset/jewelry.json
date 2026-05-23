@@ -1,26 +1,5 @@
 [
   {
-    "id": "necklace1",
-    "type": "necklace",
-    "name": "Classic Gold Chain",
-    "weight": 20,
-    "image": "necklaces/necklace1.png"
-  },
-  {
-    "id": "necklace2",
-    "type": "necklace",
-    "name": "Temple Gold Necklace",
-    "weight": 35,
-    "image": "necklaces/necklace2.png"
-  },
-  {
-    "id": "necklace3",
-    "type": "necklace",
-    "name": "Choker Gold Set",
-    "weight": 50,
-    "image": "necklaces/necklace3.png"
-  },
-  {
     "id": "earring1",
     "type": "earring",
     "name": "Gold Stud Earring",
@@ -40,6 +19,76 @@
     "name": "Gold Drop Earring",
     "weight": 5,
     "image": "earrings/earring3.png"
+  },
+  {
+    "id": "earring4",
+    "type": "earring",
+    "name": "Gold Earring 4",
+    "weight": 5,
+    "image": "earrings/earring4.png"
+  },
+  {
+    "id": "earring5",
+    "type": "earring",
+    "name": "Gold Earring 5",
+    "weight": 5,
+    "image": "earrings/earring5.png"
+  },
+  {
+    "id": "earring6",
+    "type": "earring",
+    "name": "Gold Earring 6",
+    "weight": 5,
+    "image": "earrings/earring6.png"
+  },
+  {
+    "id": "earring7",
+    "type": "earring",
+    "name": "Gold Earring 7",
+    "weight": 5,
+    "image": "earrings/earring7.png"
+  },
+  {
+    "id": "earring8",
+    "type": "earring",
+    "name": "Gold Earring 8",
+    "weight": 5,
+    "image": "earrings/earring8.png"
+  },
+  {
+    "id": "earring9",
+    "type": "earring",
+    "name": "Gold Earring 9",
+    "weight": 5,
+    "image": "earrings/earring9.png"
+  },
+  {
+    "id": "earring10",
+    "type": "earring",
+    "name": "Gold Earring 10",
+    "weight": 5,
+    "image": "earrings/earring10.png"
+  },
+  {
+    "id": "earring11",
+    "type": "earring",
+    "name": "Gold Earring 11",
+    "weight": 5,
+    "image": "earrings/earring11.png"
+  },
+  {
+    "id": "earring12",
+    "type": "earring",
+    "name": "Gold Earring 12",
+    "weight": 5,
+    "image": "earrings/earring12.png"
+  },
+  {
+    "id": "earring13",
+    "type": "earring",
+    "name": "Gold Earring 13",
+    "weight": 5,
+    "image": "earrings/earring13.png"
   },
   {
     "id": "bangle1",
@@ -63,6 +112,55 @@
     "image": "bangles/bangle3.png"
   },
   {
+    "id": "bangle4",
+    "type": "bangle",
+    "name": "Gold Bangle 4",
+    "weight": 15,
+    "image": "bangles/bangle4.png"
+  },
+  {
+    "id": "bangle5",
+    "type": "bangle",
+    "name": "Gold Bangle 5",
+    "weight": 15,
+    "image": "bangles/bangle5.png"
+  },
+  {
+    "id": "bangle6",
+    "type": "bangle",
+    "name": "Gold Bangle 6",
+    "weight": 15,
+    "image": "bangles/bangle6.png"
+  },
+  {
+    "id": "bangle7",
+    "type": "bangle",
+    "name": "Gold Bangle 7",
+    "weight": 15,
+    "image": "bangles/bangle7.png"
+  },
+  {
+    "id": "bangle8",
+    "type": "bangle",
+    "name": "Gold Bangle 8",
+    "weight": 15,
+    "image": "bangles/bangle8.png"
+  },
+  {
+    "id": "bangle9",
+    "type": "bangle",
+    "name": "Gold Bangle 9",
+    "weight": 15,
+    "image": "bangles/bangle9.png"
+  },
+  {
+    "id": "bangle10",
+    "type": "bangle",
+    "name": "Gold Bangle 10",
+    "weight": 15,
+    "image": "bangles/bangle10.png"
+  },
+  {
     "id": "ring1",
     "type": "ring",
     "name": "Gold Band Ring",
@@ -82,5 +180,134 @@
     "name": "Gold Stone Ring",
     "weight": 8,
     "image": "rings/ring3.png"
+  },
+  {
+    "id": "ring4",
+    "type": "ring",
+    "name": "Gold Ring 4",
+    "weight": 4,
+    "image": "rings/ring4.png"
+  },
+  {
+    "id": "ring5",
+    "type": "ring",
+    "name": "Golden Diamond Engagement Ring",
+    "weight": 6,
+    "image": "rings/ring5.png"
+  },
+  {
+    "id": "ring6",
+    "type": "ring",
+    "name": "Golden Emerald Eternity Ring",
+    "weight": 5,
+    "image": "rings/ring6.png"
+  },
+  {
+    "id": "ring7",
+    "type": "ring",
+    "name": "Golden Filigree Ring",
+    "weight": 4,
+    "image": "rings/ring7.png"
+  },
+  {
+    "id": "ring8",
+    "type": "ring",
+    "name": "Golden Ruby Signet Ring",
+    "weight": 7,
+    "image": "rings/ring8.png"
+  },
+  {
+    "id": "ring9",
+    "type": "ring",
+    "name": "Rose Gold Halo Ring",
+    "weight": 5,
+    "image": "rings/ring9.png"
+  },
+  {
+    "id": "ring10",
+    "type": "ring",
+    "name": "White Gold Sapphire Ring",
+    "weight": 5,
+    "image": "rings/ring10.png"
+  },
+  {
+    "id": "necklace1",
+    "type": "necklace",
+    "name": "Classic Gold Chain",
+    "weight": 20,
+    "length": "princess",
+    "image": "necklaces/necklace1.png"
+  },
+  {
+    "id": "necklace2",
+    "type": "necklace",
+    "name": "Temple Gold Necklace",
+    "weight": 35,
+    "length": "matinee",
+    "image": "necklaces/necklace2.png"
+  },
+  {
+    "id": "necklace3",
+    "type": "necklace",
+    "name": "Choker Gold Set",
+    "weight": 50,
+    "length": "choker",
+    "image": "necklaces/necklace3.png"
+  },
+  {
+    "id": "necklace4",
+    "type": "necklace",
+    "name": "Layered Gold Chain",
+    "weight": 15,
+    "length": "princess",
+    "image": "necklaces/necklace4.png"
+  },
+  {
+    "id": "necklace5",
+    "type": "necklace",
+    "name": "Mango Mala Haar",
+    "weight": 45,
+    "length": "opera",
+    "image": "necklaces/necklace5.png"
+  },
+  {
+    "id": "necklace6",
+    "type": "necklace",
+    "name": "Kundan Bridal Necklace",
+    "weight": 60,
+    "length": "choker",
+    "image": "necklaces/necklace6.png"
+  },
+  {
+    "id": "necklace7",
+    "type": "necklace",
+    "name": "Pearl Gold Haar",
+    "weight": 30,
+    "length": "opera",
+    "image": "necklaces/necklace7.png"
+  },
+  {
+    "id": "necklace8",
+    "type": "necklace",
+    "name": "Antique Gold Choker",
+    "weight": 40,
+    "length": "choker",
+    "image": "necklaces/necklace8.png"
+  },
+  {
+    "id": "necklace9",
+    "type": "necklace",
+    "name": "Rani Haar Long Chain",
+    "weight": 55,
+    "length": "rope",
+    "image": "necklaces/necklace9.png"
+  },
+  {
+    "id": "necklace10",
+    "type": "necklace",
+    "name": "Gold Rope Chain",
+    "weight": 25,
+    "length": "matinee",
+    "image": "necklaces/necklace10.png"
   }
 ]
