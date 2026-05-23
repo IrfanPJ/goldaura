@@ -8,8 +8,13 @@ Endpoints:
 """
 
 import os
+import sys
 import uuid
 import io
+
+# Ensure backend/ is on the path so Vercel can find sibling modules
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from PIL import Image
 from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
