@@ -1,28 +1,83 @@
 """
-nanobanana.py — Gemini image-edit integration for jewelry try-on.
+nanobanana.py — Two-step Gemini pipeline for jewelry virtual try-on.
 
-Sends the user's original photo + jewelry PNG(s) to Gemini and instructs
-it to edit the photo in-place: preserve the person exactly, only add jewelry.
+Step 1 — Detection:  Analyze the portrait to find which body parts are
+                     visible (neck, ears, wrists, fingers, ankles).
+Step 2 — Generation: Apply only the jewelry whose placement area is visible.
+
+Returns a dict:
+  {
+    "image":         PIL.Image  — edited result,
+    "applied":       list[dict] — items actually composited,
+    "skipped":       list[dict] — items skipped with reason,
+    "visible_parts": dict       — detection result for the UI,
+  }
 """
 
 import os
 import io
-import sys
+import re
+import json
 from PIL import Image
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
-def log(msg):
-    """Print with flush so logs appear immediately in Flask debug mode."""
-    print(f"[NanoBanana] {msg}", flush=True)
-
 load_dotenv(override=True)
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL = "gemini-3-pro-image-preview"
+
+# ── Config ────────────────────────────────────────────────────────────────────
+
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY")
+GCP_PROJECT     = os.environ.get("GOOGLE_CLOUD_PROJECT")
+GCP_LOCATION    = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+DETECTION_MODEL  = "gemini-2.0-flash"          # fast, cheap — text output only
+GENERATION_MODEL = "gemini-2.5-flash-image"    # image output
+
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
-MAX_PX = 1024  # resize large images before sending to stay within token limits
+MAX_PX = 1024
+
+# Which body part must be visible for each jewelry type
+PART_REQUIRED = {
+    "necklace":  "neck",
+    "earring":   "ears",
+    "bangle":    "wrists",
+    "bracelet":  "wrists",
+    "ring":      "fingers",
+    "anklet":    "ankles",
+}
+
+PART_LABEL = {
+    "neck":    "neck / chest area",
+    "ears":    "ears",
+    "wrists":  "wrists / hands",
+    "fingers": "fingers",
+    "ankles":  "ankles",
+}
+
+PLACEMENT_DESC = {
+    "necklace":  "around the neck / upper chest",
+    "earring":   "on the ears",
+    "bangle":    "on the wrist",
+    "bracelet":  "on the wrist",
+    "ring":      "on a finger",
+    "anklet":    "on the ankle",
+}
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def log(msg: str):
+    print(f"[NanoBanana] {msg}", flush=True)
+
+
+def _build_client() -> genai.Client:
+    if GCP_PROJECT:
+        return genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOCATION)
+    if GEMINI_API_KEY:
+        return genai.Client(api_key=GEMINI_API_KEY)
+    raise ValueError("No credentials: set GEMINI_API_KEY or GOOGLE_CLOUD_PROJECT.")
 
 
 def _to_bytes(img: Image.Image, fmt: str = "JPEG") -> bytes:
@@ -34,7 +89,7 @@ def _to_bytes(img: Image.Image, fmt: str = "JPEG") -> bytes:
     return buf.getvalue()
 
 
-def _resize_if_large(img: Image.Image) -> Image.Image:
+def _resize(img: Image.Image) -> Image.Image:
     w, h = img.size
     if max(w, h) > MAX_PX:
         scale = MAX_PX / max(w, h)
@@ -42,115 +97,184 @@ def _resize_if_large(img: Image.Image) -> Image.Image:
     return img
 
 
-def generate_tryon(
-    base_image: Image.Image,
-    jewelry_items: list,   # list of {"path": str, "type": str}
-) -> Image.Image:
-    """
-    Edit base_image to add all jewelry_items using Gemini image generation.
-    Returns the edited PIL Image (RGB).
-
-    Raises ValueError on API failure.
-    Returns base_image if GEMINI_API_KEY is not set.
-    """
-    log(f"=== Try-On Request ===")
-    log(f"Model: {MODEL}")
-    log(f"Jewelry items: {[item['type'] for item in jewelry_items]}")
-
-    if not GEMINI_API_KEY:
-        log("WARNING: GEMINI_API_KEY not set — returning original image.")
-        return base_image
-
-    log("API key found, creating client...")
-    client = genai.Client(api_key=GEMINI_API_KEY)
-
-    # ── Prepare base image ─────────────────────────────────────────
-    base_resized = _resize_if_large(base_image)
-    base_part = types.Part.from_bytes(
-        data=_to_bytes(base_resized, "JPEG"),
-        mime_type="image/jpeg",
+def _image_part(img: Image.Image, fmt: str = "JPEG") -> types.Part:
+    return types.Part.from_bytes(
+        data=_to_bytes(img, fmt),
+        mime_type=f"image/{'jpeg' if fmt == 'JPEG' else 'png'}",
     )
 
-    # ── Prepare jewelry images ─────────────────────────────────────
-    jewelry_parts = []
-    jewelry_type_labels = []
-    for item in jewelry_items:
-        full_path = os.path.join(ASSETS_DIR, item["path"])
-        jewel_pil = Image.open(full_path).convert("RGBA")
-        jewel_pil = _resize_if_large(jewel_pil)
-        jewelry_parts.append(
-            types.Part.from_bytes(
-                data=_to_bytes(jewel_pil, "PNG"),
-                mime_type="image/png",
-            )
-        )
-        jewelry_type_labels.append(item["type"])
 
-    jewelry_list = ", ".join(jewelry_type_labels)
+# ── Step 1: Body-part detection ───────────────────────────────────────────────
 
-    # Placement map so the model knows where each piece belongs
-    placement = {
-        "necklace": "around the neck",
-        "earring":  "on the ears",
-        "bangle":   "on the wrist",
-        "ring":     "on a finger",
-        "bracelet": "on the wrist",
-        "anklet":   "on the ankle",
-    }
-    placement_instructions = "; ".join(
-        f"{t} → {placement.get(t, 'correct position')}"
-        for t in jewelry_type_labels
-    )
-
-    # ── Prompt — anchored firmly to editing the original photo ──────
+def _detect_visible_parts(portrait_part: types.Part, client: genai.Client) -> dict:
+    """
+    Ask Gemini to check which jewelry-relevant body regions are clearly visible.
+    Returns e.g. {"neck": True, "ears": False, "wrists": True, "fingers": False, "ankles": False}
+    Falls back to all-True if the model call fails, so generation always attempts.
+    """
     prompt = (
-        f"EDIT this photo. Do NOT create a new image. Do NOT regenerate the person.\n\n"
-        f"I am giving you:\n"
-        f"  Image 1: The ORIGINAL photo — this is what you must edit.\n"
-        f"  Image 2+: Transparent PNG(s) of {jewelry_list} jewelry pieces.\n\n"
-        f"YOUR ONLY TASK: Overlay the provided {jewelry_list} onto the ORIGINAL photo (Image 1).\n"
-        f"Place each piece at its correct position: {placement_instructions}.\n\n"
-        f"CRITICAL EDITING RULES:\n"
-        f"1. START from the EXACT original photo (Image 1) as your base canvas.\n"
-        f"2. The person's face, skin, hair, eyes, expression, body, pose, and clothing "
-        f"must remain COMPLETELY UNCHANGED — identical to Image 1.\n"
-        f"3. The background, lighting, colors, and composition must stay EXACTLY the same.\n"
-        f"4. ONLY add the jewelry — blend it naturally with matching lighting, shadows, and reflections.\n"
-        f"5. The result should look like the person was actually wearing the jewelry when the photo was taken.\n"
-        f"6. CLOTHING INTERACTION: If a garment (collar, apron strap, sleeve, scarf) naturally "
-        f"overlaps the jewelry area, let it overlap realistically — the clothing stays on top of "
-        f"the jewelry exactly as it would in real life. Do NOT remove or alter clothing.\n"
-        f"7. NECKLACE: It should sit on the skin of the neck/chest, going under any collar or strap "
-        f"that crosses over it, emerging naturally at the sides.\n"
-        f"8. Do NOT change anything else. No new person. No new background. No style changes.\n"
+        "Analyze this portrait photo carefully.\n"
+        "For each body region below, answer true ONLY if it is clearly visible "
+        "AND unobstructed enough to realistically place jewelry on it.\n\n"
+        "Reply with ONLY a JSON object — no explanation, no markdown:\n"
+        '{"neck": <bool>, "ears": <bool>, "wrists": <bool>, "fingers": <bool>, "ankles": <bool>}\n\n'
+        "Definitions:\n"
+        "• neck   — neck and upper chest clearly exposed for a necklace\n"
+        "• ears   — at least one ear clearly visible for earrings\n"
+        "• wrists — wrist/lower arm clearly visible for a bangle or bracelet\n"
+        "• fingers — individual fingers clearly visible and identifiable for a ring "
+        "  (a closed fist, pockets, or hands behind back = false)\n"
+        "• ankles — ankles clearly visible for an anklet\n"
     )
-
-    contents = [base_part, *jewelry_parts, types.Part.from_text(text=prompt)]
-
-    log(f"Sending request to Gemini ({MODEL})...")
     try:
         response = client.models.generate_content(
-            model=MODEL,
+            model=DETECTION_MODEL,
+            contents=[portrait_part, types.Part.from_text(text=prompt)],
+        )
+        raw = response.text.strip()
+        match = re.search(r'\{[^}]+\}', raw, re.DOTALL)
+        if match:
+            result = json.loads(match.group())
+            log(f"Detection result: {result}")
+            return result
+        log(f"Detection parse failed (raw: {raw!r}), defaulting all True")
+    except Exception as exc:
+        log(f"Detection error: {exc} — defaulting all True")
+
+    return {k: True for k in PART_LABEL}
+
+
+# ── Step 2: Image generation ──────────────────────────────────────────────────
+
+def _build_prompt(jewelry_type_labels: list[str]) -> str:
+    jewelry_list = ", ".join(jewelry_type_labels)
+    placement_lines = "\n".join(
+        f"  • {t} → {PLACEMENT_DESC.get(t, 'correct anatomical position')}"
+        for t in jewelry_type_labels
+    )
+    return (
+        "EDIT this photo. Do NOT create a new image. Do NOT regenerate the person.\n\n"
+        "You are given:\n"
+        "  Image 1: The ORIGINAL photo — use this as your base canvas.\n"
+        f"  Image 2+: Transparent PNG(s) of: {jewelry_list}.\n\n"
+        f"TASK: Composite the provided jewelry onto Image 1 at these exact positions:\n"
+        f"{placement_lines}\n\n"
+        "RULES (do not break any):\n"
+        "1. Start from Image 1 exactly — every pixel of the person, background, "
+        "   clothing, and lighting stays IDENTICAL.\n"
+        "2. Only add the jewelry. Nothing else changes.\n"
+        "3. Match the jewelry brightness, shadows, and reflections to the scene lighting.\n"
+        "4. If clothing (collar, strap, sleeve) naturally crosses the jewelry area, "
+        "   the clothing stays on top — the jewelry sits underneath, emerging at the edges.\n"
+        "5. The final result must look like an unedited professional photograph — "
+        "   no halos, seams, or compositing artifacts.\n"
+        "6. Do NOT place any jewelry on a body part that is not clearly visible. "
+        "   If the intended placement area is hidden or cropped out, omit that piece entirely.\n"
+    )
+
+
+def _extract_image(response) -> Image.Image | None:
+    for part in response.parts:
+        if part.inline_data is not None:
+            return Image.open(io.BytesIO(part.inline_data.data)).convert("RGB")
+    return None
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def generate_tryon(
+    base_image: Image.Image,
+    jewelry_items: list,   # list of {"path": str, "type": str, ...}
+) -> dict:
+    """
+    Two-step pipeline: detect visible parts, then generate the try-on.
+
+    Returns:
+      {
+        "image":         PIL.Image,
+        "applied":       list[dict],  — items composited
+        "skipped":       list[dict],  — items skipped (body part not visible)
+        "visible_parts": dict,        — raw detection output
+      }
+
+    Raises ValueError on unrecoverable API errors.
+    """
+    log(f"=== Try-On Request ({len(jewelry_items)} items) ===")
+
+    if not GEMINI_API_KEY and not GCP_PROJECT:
+        log("WARNING: No credentials — returning original image.")
+        return {
+            "image": base_image,
+            "applied": [],
+            "skipped": [{**i, "reason": "API not configured"} for i in jewelry_items],
+            "visible_parts": {},
+        }
+
+    client = _build_client()
+    portrait_resized = _resize(base_image)
+    portrait_part    = _image_part(portrait_resized, "JPEG")
+
+    # ── Step 1: detect ───────────────────────────────────────────────
+    log("Step 1: detecting visible body parts...")
+    visible = _detect_visible_parts(portrait_part, client)
+
+    # ── Step 2: filter ───────────────────────────────────────────────
+    applicable, skipped = [], []
+    for item in jewelry_items:
+        part_key = PART_REQUIRED.get(item["type"], "neck")
+        if visible.get(part_key, True):
+            applicable.append(item)
+        else:
+            reason = f"{PART_LABEL[part_key]} not visible in photo"
+            log(f"Skipping {item['type']}: {reason}")
+            skipped.append({**item, "skip_reason": reason})
+
+    log(f"Applicable: {[i['type'] for i in applicable]} | Skipped: {[i['type'] for i in skipped]}")
+
+    if not applicable:
+        raise ValueError(
+            "None of the selected jewelry can be applied to this photo. "
+            "The required body parts are not visible. "
+            f"Skipped: {', '.join(i['type'] for i in skipped)}. "
+            "Try a different photo where the relevant areas (neck, ears, hands, etc.) are clearly visible."
+        )
+
+    # ── Step 3: load jewelry images ──────────────────────────────────
+    jewelry_parts      = []
+    jewelry_type_labels = []
+    for item in applicable:
+        full_path = os.path.join(ASSETS_DIR, item["path"])
+        jewel_pil = Image.open(full_path).convert("RGBA")
+        jewel_pil = _resize(jewel_pil)
+        jewelry_parts.append(_image_part(jewel_pil, "PNG"))
+        jewelry_type_labels.append(item["type"])
+
+    # ── Step 4: generate ─────────────────────────────────────────────
+    prompt   = _build_prompt(jewelry_type_labels)
+    contents = [portrait_part, *jewelry_parts, types.Part.from_text(text=prompt)]
+
+    log(f"Step 2: generating with {GENERATION_MODEL}...")
+    try:
+        response = client.models.generate_content(
+            model=GENERATION_MODEL,
             contents=contents,
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE", "TEXT"],
             ),
         )
-        log("Response received from Gemini!")
-
-        # Extract the first image part from the response
-        for part in response.parts:
-            if part.inline_data is not None:
-                log("Image found in response - SUCCESS!")
-                return Image.open(io.BytesIO(part.inline_data.data)).convert("RGB")
-
-        # No image in response — likely a permissions issue
-        log("ERROR: No image in response")
-        raise ValueError(
-            f"Gemini returned no image. Your API key may not have access to "
-            f"'{MODEL}'. Ensure your API key has access to image generation in Google AI Studio and retry."
-        )
-
+        result_image = _extract_image(response)
+        if result_image is None:
+            raise ValueError(
+                f"Gemini returned no image for model '{GENERATION_MODEL}'. "
+                "Ensure your API key has image generation access."
+            )
+        log("Generation SUCCESS")
+        return {
+            "image":         result_image,
+            "applied":       applicable,
+            "skipped":       skipped,
+            "visible_parts": visible,
+        }
     except Exception as exc:
-        log(f"ERROR: {exc}")
-        raise ValueError(f"Gemini API Error: {exc}")
+        log(f"Generation ERROR: {exc}")
+        raise ValueError(f"Gemini API error: {exc}")

@@ -164,6 +164,11 @@ function setupTryOnPage() {
             const appliedItems = data.applied_items || [data.jewelry_applied];
             showAppliedSummary(appliedItems);
 
+            // Warn about skipped items
+            if (data.skipped_items && data.skipped_items.length > 0) {
+                showSkippedWarning(data.skipped_items);
+            }
+
         } catch (err) {
             const errDiv = document.getElementById("tryon-error");
             errDiv.textContent = `⚠️ ${err.message}`;
@@ -349,6 +354,29 @@ function fetchSuggestions() {
         .catch(() => {
             section.classList.add("hidden");
         });
+}
+
+function showSkippedWarning(skippedItems) {
+    let warn = document.getElementById("tryon-skipped-warning");
+    if (!warn) {
+        warn = document.createElement("div");
+        warn.id = "tryon-skipped-warning";
+        warn.className = "skipped-warning";
+        document.getElementById("tryon-error").insertAdjacentElement("afterend", warn);
+    }
+    warn.innerHTML = `
+        <div class="skipped-warning-title">⚠ Some items were not applied</div>
+        <div class="skipped-warning-body">
+            ${skippedItems.map(i => `
+                <div class="skipped-item">
+                    <span class="skipped-item-name">${i.name}</span>
+                    <span class="skipped-item-reason">${i.skip_reason}</span>
+                </div>
+            `).join("")}
+            <p class="skipped-hint">Use a photo where the relevant body parts are clearly visible.</p>
+        </div>
+    `;
+    warn.classList.remove("hidden");
 }
 
 function showAppliedSummary(items) {

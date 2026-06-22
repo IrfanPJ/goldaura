@@ -120,20 +120,22 @@ def try_on():
         
     # Apply Nano Banana processing
     try:
-        result = generate_tryon(
+        tryon = generate_tryon(
             base_image=image_pil,
             jewelry_items=[{"path": jewelry_item["image"], "type": jewelry_item["type"]}],
         )
     except ValueError as e:
         return jsonify({"detail": str(e)}), 422
-        
-    # Save and return
+
+    result = tryon["image"]
     filename = _save_result(result)
     return jsonify({
         "success": True,
         "result_image": f"/outputs/{filename}",
         "result_image_b64": _image_to_b64(result),
         "jewelry_applied": jewelry_item,
+        "skipped_items": tryon["skipped"],
+        "visible_parts": tryon["visible_parts"],
     })
 
 
@@ -173,21 +175,23 @@ def try_on_multi():
     jewelry_items_payload = [{"path": item["image"], "type": item["type"]} for item in items_to_apply]
     
     try:
-        current_image = generate_tryon(
+        tryon = generate_tryon(
             base_image=image_pil,
             jewelry_items=jewelry_items_payload,
         )
-        applied_items = items_to_apply
-    except ValueError:
-        return jsonify({"detail": "Failed to apply jewelry items."}), 422
-    
-    # Save and return
-    filename = _save_result(current_image)
+    except ValueError as e:
+        return jsonify({"detail": str(e)}), 422
+
+    result = tryon["image"]
+    applied_items = tryon["applied"]
+    filename = _save_result(result)
     return jsonify({
         "success": True,
         "result_image": f"/outputs/{filename}",
-        "result_image_b64": _image_to_b64(current_image),
+        "result_image_b64": _image_to_b64(result),
         "applied_items": applied_items,
+        "skipped_items": tryon["skipped"],
+        "visible_parts": tryon["visible_parts"],
         "total_applied": len(applied_items),
         "total_requested": len(items_to_apply),
     })
@@ -265,22 +269,24 @@ def generate_style():
     jewelry_items_payload = [{"path": item["image"], "type": item["type"]} for item in styling_result["selected_items"]]
     
     try:
-        current_image = generate_tryon(
+        tryon = generate_tryon(
             base_image=image_pil,
             jewelry_items=jewelry_items_payload,
         )
-        applied_items = styling_result["selected_items"]
-    except ValueError:
-        return jsonify({"detail": "Failed to apply styling items."}), 422
-            
-    # Save and return
-    filename = _save_result(current_image)
+    except ValueError as e:
+        return jsonify({"detail": str(e)}), 422
+
+    result = tryon["image"]
+    applied_items = tryon["applied"]
+    filename = _save_result(result)
     return jsonify({
         "success": True,
         "result_image": f"/outputs/{filename}",
-        "result_image_b64": _image_to_b64(current_image),
+        "result_image_b64": _image_to_b64(result),
         "distribution": styling_result["distribution"],
         "selected_items": applied_items,
+        "skipped_items": tryon["skipped"],
+        "visible_parts": tryon["visible_parts"],
         "total_weight_requested": styling_result["total_weight_requested"],
         "total_weight_actual": styling_result["total_weight_actual"],
     })
