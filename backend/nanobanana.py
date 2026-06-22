@@ -38,7 +38,7 @@ GENERATION_MODEL = "gemini-2.5-flash-image"    # image output
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 MAX_PX = 1024
 
-# Which body part must be visible for each jewelry type
+# Maps jewelry type → body part key from detection
 PART_REQUIRED = {
     "necklace":  "neck",
     "earring":   "ears",
@@ -64,6 +64,11 @@ PLACEMENT_DESC = {
     "ring":      "on a finger",
     "anklet":    "on the ankle",
 }
+
+# Items we can "extend" the frame for when not visible.
+# The model will show the body part naturally at the frame edge.
+# Anklets are excluded — showing ankles requires too much body extension.
+EXTENDABLE = {"ring", "bangle", "bracelet"}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -146,30 +151,66 @@ def _detect_visible_parts(portrait_part: types.Part, client: genai.Client) -> di
 
 # ── Step 2: Image generation ──────────────────────────────────────────────────
 
-def _build_prompt(jewelry_type_labels: list[str]) -> str:
-    jewelry_list = ", ".join(jewelry_type_labels)
-    placement_lines = "\n".join(
-        f"  • {t} → {PLACEMENT_DESC.get(t, 'correct anatomical position')}"
-        for t in jewelry_type_labels
-    )
+def _build_prompt(items: list[dict], visible: dict) -> str:
+    """
+    Build a context-aware prompt that tells the model exactly how to handle
+    each jewelry item — including how to extend the frame for rings/bangles
+    when hands are not in the original photo.
+    """
+    jewelry_list = ", ".join(i["type"] for i in items)
+
+    # Build per-item placement instructions
+    item_lines = []
+    for item in items:
+        t = item["type"]
+        part_key = PART_REQUIRED.get(t, "neck")
+        part_visible = visible.get(part_key, True)
+        base = f"  • {t} → {PLACEMENT_DESC.get(t, 'correct position')}"
+
+        if part_visible:
+            item_lines.append(base)
+        elif t in EXTENDABLE:
+            # Hand/wrist not in frame — instruct the model to extend naturally
+            item_lines.append(
+                base + "\n"
+                "    ↳ The hand/wrist is NOT currently in this photo. "
+                "    Naturally extend the composition to show just enough of the "
+                "    wrist or fingers at the lower edge of the frame — in a relaxed, "
+                "    neutral pose. The skin tone, bone structure, and hand appearance "
+                "    MUST match this specific person exactly (derive from their face, "
+                "    neck, and any visible skin in Image 1). "
+                "    The extension must look like the hand was always there — "
+                "    no unnatural angles, floating limbs, or mismatched anatomy."
+            )
+        else:
+            # Earrings when ears not visible, necklace when neck hidden, etc.
+            item_lines.append(
+                base + "\n"
+                f"    ↳ The {PART_LABEL[part_key]} is not clearly visible. "
+                "    Place the jewelry as best you can where it would naturally sit, "
+                "    or omit it if placement would look unrealistic."
+            )
+
+    placement_block = "\n".join(item_lines)
+
     return (
         "EDIT this photo. Do NOT create a new image. Do NOT regenerate the person.\n\n"
         "You are given:\n"
         "  Image 1: The ORIGINAL photo — use this as your base canvas.\n"
         f"  Image 2+: Transparent PNG(s) of: {jewelry_list}.\n\n"
-        f"TASK: Composite the provided jewelry onto Image 1 at these exact positions:\n"
-        f"{placement_lines}\n\n"
-        "RULES (do not break any):\n"
-        "1. Start from Image 1 exactly — every pixel of the person, background, "
-        "   clothing, and lighting stays IDENTICAL.\n"
-        "2. Only add the jewelry. Nothing else changes.\n"
-        "3. Match the jewelry brightness, shadows, and reflections to the scene lighting.\n"
-        "4. If clothing (collar, strap, sleeve) naturally crosses the jewelry area, "
-        "   the clothing stays on top — the jewelry sits underneath, emerging at the edges.\n"
-        "5. The final result must look like an unedited professional photograph — "
-        "   no halos, seams, or compositing artifacts.\n"
-        "6. Do NOT place any jewelry on a body part that is not clearly visible. "
-        "   If the intended placement area is hidden or cropped out, omit that piece entirely.\n"
+        f"TASK: Composite the provided jewelry onto Image 1.\n\n"
+        f"PER-ITEM PLACEMENT INSTRUCTIONS:\n{placement_block}\n\n"
+        "CORE RULES (never break):\n"
+        "1. Image 1 is your base canvas — every pixel of the existing scene "
+        "   (person's face, clothing, background, lighting) stays IDENTICAL.\n"
+        "2. Only add jewelry and any minimal hand-extension described above.\n"
+        "3. Match jewelry brightness, shadows, and reflections to the scene lighting in Image 1.\n"
+        "4. If clothing (collar, strap, sleeve) crosses a jewelry area, "
+        "   keep the clothing on top exactly as in real life.\n"
+        "5. Any extended hand/wrist must be anatomically correct for this person — "
+        "   same skin tone, proportions, and natural resting position.\n"
+        "6. Final image must look like an unedited professional photograph — "
+        "   no halos, seams, floating objects, or compositing artifacts.\n"
     )
 
 
@@ -219,24 +260,29 @@ def generate_tryon(
     visible = _detect_visible_parts(portrait_part, client)
 
     # ── Step 2: filter ───────────────────────────────────────────────
+    # Hard-skip: anklets when ankles not visible (extending the frame to show
+    # full legs/ankles requires too drastic a composition change).
+    # Everything else is passed to generation — rings/bangles get explicit
+    # "extend the frame" instructions when hands are not in the photo.
     applicable, skipped = [], []
     for item in jewelry_items:
         part_key = PART_REQUIRED.get(item["type"], "neck")
-        if visible.get(part_key, True):
-            applicable.append(item)
-        else:
-            reason = f"{PART_LABEL[part_key]} not visible in photo"
-            log(f"Skipping {item['type']}: {reason}")
-            skipped.append({**item, "skip_reason": reason})
+        part_visible = visible.get(part_key, True)
 
-    log(f"Applicable: {[i['type'] for i in applicable]} | Skipped: {[i['type'] for i in skipped]}")
+        if not part_visible and item["type"] == "anklet":
+            reason = "ankles not visible — frame extension not feasible"
+            log(f"Hard-skip {item['type']}: {reason}")
+            skipped.append({**item, "skip_reason": reason})
+        else:
+            applicable.append(item)
+
+    log(f"Applicable: {[i['type'] for i in applicable]} | Hard-skipped: {[i['type'] for i in skipped]}")
 
     if not applicable:
         raise ValueError(
             "None of the selected jewelry can be applied to this photo. "
-            "The required body parts are not visible. "
             f"Skipped: {', '.join(i['type'] for i in skipped)}. "
-            "Try a different photo where the relevant areas (neck, ears, hands, etc.) are clearly visible."
+            "Try a different photo where the relevant body areas are visible."
         )
 
     # ── Step 3: load jewelry images ──────────────────────────────────
@@ -250,7 +296,7 @@ def generate_tryon(
         jewelry_type_labels.append(item["type"])
 
     # ── Step 4: generate ─────────────────────────────────────────────
-    prompt   = _build_prompt(jewelry_type_labels)
+    prompt   = _build_prompt(applicable, visible)
     contents = [portrait_part, *jewelry_parts, types.Part.from_text(text=prompt)]
 
     log(f"Step 2: generating with {GENERATION_MODEL}...")
