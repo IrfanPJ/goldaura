@@ -136,6 +136,7 @@ def try_on():
         "jewelry_applied": jewelry_item,
         "skipped_items": tryon["skipped"],
         "visible_parts": tryon["visible_parts"],
+        "attempts": tryon.get("attempts", 1),
     })
 
 
@@ -194,6 +195,7 @@ def try_on_multi():
         "visible_parts": tryon["visible_parts"],
         "total_applied": len(applied_items),
         "total_requested": len(items_to_apply),
+        "attempts": tryon.get("attempts", 1),
     })
 
 
@@ -289,6 +291,7 @@ def generate_style():
         "visible_parts": tryon["visible_parts"],
         "total_weight_requested": styling_result["total_weight_requested"],
         "total_weight_actual": styling_result["total_weight_actual"],
+        "attempts": tryon.get("attempts", 1),
     })
 
 if __name__ == "__main__":

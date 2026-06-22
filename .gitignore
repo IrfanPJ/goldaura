@@ -25,3 +25,5 @@ backend/outputs/
 backend/.env
 .idea/
 .vscode/
+
+.vercel
