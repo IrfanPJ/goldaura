@@ -42,8 +42,14 @@ GEMINI_API_KEY   = os.environ.get("GEMINI_API_KEY")
 GCP_PROJECT      = os.environ.get("GOOGLE_CLOUD_PROJECT")
 GCP_LOCATION     = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 
-DETECTION_MODEL  = "gemini-2.0-flash"        # fast text model — used for both detection & validation
-GENERATION_MODEL = "gemini-2.5-flash-image"  # image-output model
+DETECTION_MODEL    = "gemini-2.5-flash"           # fast text model — used for both detection & validation
+GENERATION_MODEL   = "gemini-3-pro-image-preview"  # precise photo-editing model (Nano Banana Pro)
+FALLBACK_MODEL     = "gemini-2.5-flash-image"      # used only if GENERATION_MODEL is unavailable
+
+# Below this, two images are similarity-treated as "different photos" rather
+# than "same photo, jewelry added" — triggers a retry regardless of what the
+# AI placement judge says, since that judge can miss gross pose/crop drift.
+MIN_COMPOSITION_SIMILARITY = 0.80
 
 MAX_ATTEMPTS = 2   # 1 original attempt + 1 retry
 
@@ -132,6 +138,22 @@ def _extract_image(response) -> Image.Image | None:
         if part.inline_data is not None:
             return Image.open(io.BytesIO(part.inline_data.data)).convert("RGB")
     return None
+
+
+def _composition_similarity(original: Image.Image, result: Image.Image) -> float:
+    """
+    Cheap, deterministic structural-similarity proxy between two images —
+    catches gross recomposition (pose/crop/background changes) that an
+    AI judge can miss, without needing numpy. Downscaling to a small
+    grayscale thumbnail washes out the small jewelry-only differences
+    while preserving differences from pose/crop/background shifts.
+    """
+    from PIL import ImageChops, ImageStat
+    o = original.convert("L").resize((64, 64))
+    r = result.convert("L").resize((64, 64))
+    diff = ImageChops.difference(o, r)
+    mean_diff = ImageStat.Stat(diff).mean[0]
+    return 1.0 - (mean_diff / 255.0)
 
 
 def _parse_json(text: str) -> dict | None:
@@ -259,20 +281,30 @@ def _run_generation(
     prompt: str,
     client: genai.Client,
 ) -> Image.Image:
-    response = client.models.generate_content(
-        model=GENERATION_MODEL,
-        contents=[portrait_part, *jewelry_parts, types.Part.from_text(text=prompt)],
-        config=types.GenerateContentConfig(
-            response_modalities=["IMAGE", "TEXT"],
-        ),
+    contents = [portrait_part, *jewelry_parts, types.Part.from_text(text=prompt)]
+    config = types.GenerateContentConfig(
+        response_modalities=["IMAGE", "TEXT"],
+        temperature=0.2,  # low — this is an edit task, not creative generation
     )
-    img = _extract_image(response)
-    if img is None:
-        raise ValueError(
-            f"Gemini returned no image (model: {GENERATION_MODEL}). "
-            "Ensure your API key has image generation access."
-        )
-    return img
+
+    models_to_try = [GENERATION_MODEL, FALLBACK_MODEL]
+    last_exc = None
+    for model in models_to_try:
+        try:
+            response = client.models.generate_content(model=model, contents=contents, config=config)
+            img = _extract_image(response)
+            if img is not None:
+                return img
+            last_exc = ValueError(f"Model {model} returned no image part.")
+            log(f"{model} returned no image — trying next model")
+        except Exception as exc:
+            last_exc = exc
+            log(f"{model} failed ({exc}) — trying next model")
+
+    raise ValueError(
+        f"Gemini returned no image from any configured model ({', '.join(models_to_try)}). "
+        f"Last error: {last_exc}"
+    )
 
 
 # ── Step 4: Post-generation validation ───────────────────────────────────────
@@ -441,6 +473,20 @@ def generate_tryon(
         last_result = result_image
 
         log(f"Step 4 — validating attempt {attempt}...")
+
+        similarity = _composition_similarity(portrait_resized, result_image)
+        log(f"Composition similarity to original: {similarity:.2f}")
+        if similarity < MIN_COMPOSITION_SIMILARITY:
+            last_issues = [
+                f"The output looks like a different photo, not an edit of the original "
+                f"(similarity={similarity:.2f}). Pose, crop, background, or clothing changed. "
+                "You must preserve the EXACT original photo pixel-for-pixel except for the jewelry."
+            ]
+            log(f"Composition check FAILED on attempt {attempt}: {last_issues}")
+            if attempt < MAX_ATTEMPTS:
+                feedback = last_issues
+            continue
+
         validation = _validate_placement(portrait_part, result_image, applicable, client)
 
         if validation["valid"]:
