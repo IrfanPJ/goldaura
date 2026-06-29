@@ -1,10 +1,16 @@
 """
 nanobanana.py — Production try-on pipeline (4-step with retry).
 
+This is an EDIT pipeline, not a generation pipeline: the original photo's
+pose, crop, clothing, and background are never altered — only jewelry is
+composited on top of body parts already visible in frame.
+
 Step 1 — Pre-detection : Identify which body parts are visible in the portrait.
-Step 2 — Filter        : Hard-skip items that are impossible to place/extend.
-Step 3 — Generation    : Composite jewelry; extend frame for rings/bangles if needed.
-Step 4 — Validation    : Verify every piece landed in the correct anatomical spot.
+Step 2 — Filter        : Hard-skip any item whose required body part isn't visible
+                         (no frame extension / no inventing hands, wrists, etc.).
+Step 3 — Generation    : Composite jewelry onto the existing photo, pixel-locked.
+Step 4 — Validation    : Verify every piece landed in the correct anatomical spot
+                         AND that the composition didn't drift from the original.
                          Retry up to MAX_ATTEMPTS times, injecting failure feedback
                          into the next prompt so the model can self-correct.
 
@@ -81,8 +87,6 @@ CORRECT_ZONE = {
     "anklet":    "around the ankle",
 }
 
-# Items that can be shown by extending the frame when not visible
-EXTENDABLE = {"ring", "bangle", "bracelet"}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -179,21 +183,22 @@ def _detect_visible_parts(portrait_part: types.Part, client: genai.Client) -> di
 
 def _filter_items(jewelry_items: list, visible: dict) -> tuple[list, list]:
     """
-    Hard-skip items that cannot be placed or frame-extended:
-    - anklets when ankles are not visible (showing full legs breaks composition)
-    - everything else proceeds; rings/bangles use frame-extension if needed
+    Hard-skip any item whose required body part is not clearly visible in the
+    original photo. This is an EDIT pipeline, not a generation pipeline — we
+    never invent a new pose/crop/hand just to show a piece of jewelry, since
+    that changes the photo instead of editing it.
     Returns (applicable, hard_skipped).
     """
     applicable, hard_skipped = [], []
     for item in jewelry_items:
-        part_key  = PART_REQUIRED.get(item["type"], "neck")
-        visible_  = visible.get(part_key, True)
-        if not visible_ and item["type"] == "anklet":
+        part_key = PART_REQUIRED.get(item["type"], "neck")
+        if not visible.get(part_key, True):
             hard_skipped.append({
                 **item,
-                "skip_reason": "Ankles not visible — frame extension not feasible for this shot.",
+                "skip_reason": f"{PART_LABEL[part_key]} not visible in the photo — "
+                               "we only edit jewelry onto what's already in frame.",
             })
-            log(f"Hard-skip anklet (ankles not visible)")
+            log(f"Hard-skip {item['type']} ({part_key} not visible)")
         else:
             applicable.append(item)
     return applicable, hard_skipped
@@ -209,32 +214,10 @@ def _build_prompt(items: list, visible: dict, feedback: list[str] | None = None)
     """
     jewelry_list = ", ".join(i["type"] for i in items)
 
-    item_lines = []
-    for item in items:
-        t          = item["type"]
-        part_key   = PART_REQUIRED.get(t, "neck")
-        is_visible = visible.get(part_key, True)
-        base       = f"  • {t} → {PLACEMENT_DESC.get(t, 'correct anatomical position')}"
-
-        if is_visible:
-            item_lines.append(base)
-        elif t in EXTENDABLE:
-            item_lines.append(
-                base + "\n"
-                "    ↳ Hands/wrists are NOT in the original photo. Naturally extend\n"
-                "      the composition to show just enough wrist or fingers at the\n"
-                "      lower frame edge in a relaxed, neutral pose. Skin tone, bone\n"
-                "      structure, and proportions MUST match this specific person\n"
-                "      exactly (derived from their face and visible skin). The\n"
-                "      extension must look like it was always part of the photo."
-            )
-        else:
-            item_lines.append(
-                base + "\n"
-                f"    ↳ The {PART_LABEL[part_key]} is not clearly visible.\n"
-                "      Place the jewelry where it would naturally sit, or omit it\n"
-                "      entirely if realistic placement is not possible."
-            )
+    item_lines = [
+        f"  • {item['type']} → {PLACEMENT_DESC.get(item['type'], 'correct anatomical position')}"
+        for item in items
+    ]
 
     corrections = ""
     if feedback:
@@ -245,20 +228,28 @@ def _build_prompt(items: list, visible: dict, feedback: list[str] | None = None)
         )
 
     return (
-        "EDIT this photo. Do NOT create a new image. Do NOT regenerate the person.\n\n"
+        "EDIT this photo. This is a PIXEL-LEVEL EDIT, not a new generation.\n"
+        "Treat Image 1 as a locked background layer. You are only allowed to draw\n"
+        "the jewelry from the other images ON TOP of it — nothing else changes.\n\n"
         "You are given:\n"
-        "  Image 1: The ORIGINAL photo — your base canvas.\n"
+        "  Image 1: The ORIGINAL photo — your base canvas. LOCKED.\n"
         f"  Image 2+: Transparent PNG(s) of: {jewelry_list}.\n\n"
         f"PER-ITEM PLACEMENT:\n" + "\n".join(item_lines) + "\n"
         + corrections +
         "\nCORE RULES (never break):\n"
-        "1. Image 1 is the base — face, skin, hair, clothing, background, lighting stay IDENTICAL.\n"
-        "2. Add ONLY the jewelry (and any minimal frame extension noted above).\n"
-        "3. Match jewelry brightness, shadows, and reflections to the scene lighting.\n"
-        "4. Clothing (collars, straps, sleeves) stays on top of jewelry naturally.\n"
-        "5. Any frame-extended hand must match this person's exact skin tone and anatomy.\n"
-        "6. Final image must look like an unedited professional photograph — "
-        "no halos, seams, floating objects, or artifacts.\n"
+        "1. Do NOT change the crop, framing, camera angle, or zoom level.\n"
+        "2. Do NOT change the person's pose, hand position, or body position — \n"
+        "   if a hand is on the chest in Image 1, it stays on the chest, in the\n"
+        "   exact same position, in the output.\n"
+        "3. Do NOT change face, skin tone, hair, clothing, clothing color, background,\n"
+        "   or lighting in any way — they must be pixel-identical to Image 1.\n"
+        "4. The ONLY new pixels allowed are the jewelry itself, placed at the\n"
+        "   anatomical position listed above, using whatever part of the body is\n"
+        "   already visible in Image 1. Never invent a body part that isn't shown.\n"
+        "5. Match jewelry brightness, shadows, and reflections to the scene lighting.\n"
+        "6. Clothing (collars, straps, sleeves) stays on top of jewelry naturally.\n"
+        "7. Final image must be indistinguishable from Image 1 except for the added\n"
+        "   jewelry — no halos, seams, floating objects, or artifacts.\n"
     )
 
 
@@ -287,13 +278,15 @@ def _run_generation(
 # ── Step 4: Post-generation validation ───────────────────────────────────────
 
 def _validate_placement(
+    portrait_part: types.Part,
     result_image: Image.Image,
     items: list,
     client: genai.Client,
 ) -> dict:
     """
-    Analyze the generated image and verify every jewelry piece is in the
-    correct anatomical position.
+    Analyze the generated image against the original and verify:
+      (a) every jewelry piece landed in the correct anatomical position, AND
+      (b) the edit didn't drift — same pose, crop, clothing, background as the original.
 
     Returns:
       {
@@ -311,20 +304,27 @@ def _validate_placement(
 
     prompt = (
         "You are a quality-control inspector for a jewelry virtual try-on system.\n"
-        "Examine this photo and verify that each jewelry piece listed below is:\n"
-        "  (a) actually present in the image, AND\n"
-        "  (b) placed in the correct anatomical position.\n\n"
-        f"Expected jewelry and their correct positions:\n{item_specs}\n\n"
+        "Image 1 is the ORIGINAL photo. Image 2 is the EDITED result, which should\n"
+        "be Image 1 with ONLY jewelry added on top — nothing else should differ.\n\n"
+        "Check two things:\n"
+        "A) COMPOSITION DRIFT — compare Image 2 to Image 1. Flag composition_unchanged\n"
+        "   as false if the pose, hand/body position, crop/framing, clothing, clothing\n"
+        "   color, background, or face changed in any way.\n"
+        "B) JEWELRY PLACEMENT — for each item below, verify it is present and in the\n"
+        "   correct anatomical position:\n"
+        f"{item_specs}\n\n"
         "Common errors to check for:\n"
         "• Ring placed on a bicep, arm, or torso instead of a finger\n"
         "• Bangle placed on the forearm or upper arm instead of the wrist\n"
         "• Necklace floating or placed on clothing without following the neckline\n"
         "• Earring placed on cheek, hair, or wrong side of face\n"
         "• Jewelry that is missing entirely\n"
-        "• Extended hand/wrist that looks anatomically wrong or has mismatched skin tone\n\n"
+        "• Pose, crop, clothing, or background changed from the original\n\n"
         "Reply with ONLY a JSON object:\n"
         "{\n"
-        '  "valid": <true if ALL items are correctly placed, false otherwise>,\n'
+        '  "composition_unchanged": <bool>,\n'
+        '  "composition_issue": "<specific difference from original or null>",\n'
+        '  "valid": <true only if composition_unchanged AND all items correctly placed>,\n'
         '  "items": [\n'
         '    {"type": "<jewelry_type>", "present": <bool>, "correct_position": <bool>, '
         '"issue": "<specific problem or null>"}\n'
@@ -335,7 +335,7 @@ def _validate_placement(
     try:
         resp = client.models.generate_content(
             model=DETECTION_MODEL,
-            contents=[result_part, types.Part.from_text(text=prompt)],
+            contents=[portrait_part, result_part, types.Part.from_text(text=prompt)],
         )
         data = _parse_json(resp.text.strip())
         if data and "items" in data:
@@ -345,6 +345,9 @@ def _validate_placement(
                 if not r.get("correct_position") or not r.get("present")
                 if r.get("issue")
             ]
+            if not data.get("composition_unchanged", True):
+                issues.insert(0, f"composition changed: {data.get('composition_issue') or 'pose/crop/clothing/background drifted from original'}")
+
             valid = bool(data.get("valid", False)) and len(issues) == 0
             log(f"Validation: valid={valid}, issues={issues}")
             return {"valid": valid, "issues": issues, "detail": data["items"]}
@@ -438,7 +441,7 @@ def generate_tryon(
         last_result = result_image
 
         log(f"Step 4 — validating attempt {attempt}...")
-        validation = _validate_placement(result_image, applicable, client)
+        validation = _validate_placement(portrait_part, result_image, applicable, client)
 
         if validation["valid"]:
             log(f"Validation PASSED on attempt {attempt}")
