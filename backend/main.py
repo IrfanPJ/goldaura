@@ -122,7 +122,7 @@ def try_on():
     try:
         tryon = generate_tryon(
             base_image=image_pil,
-            jewelry_items=[{"path": jewelry_item["image"], "type": jewelry_item["type"]}],
+            jewelry_items=[{**jewelry_item, "path": jewelry_item["image"]}],
         )
     except ValueError as e:
         return jsonify({"detail": str(e)}), 422
@@ -173,7 +173,7 @@ def try_on_multi():
         return jsonify({"detail": "Invalid image file."}), 400
     
     # Apply all jewelry items at once
-    jewelry_items_payload = [{"path": item["image"], "type": item["type"]} for item in items_to_apply]
+    jewelry_items_payload = [{**item, "path": item["image"]} for item in items_to_apply]
     
     try:
         tryon = generate_tryon(
@@ -268,7 +268,7 @@ def generate_style():
         return jsonify({"detail": "Invalid image file."}), 400
         
     # Apply all styling items at once
-    jewelry_items_payload = [{"path": item["image"], "type": item["type"]} for item in styling_result["selected_items"]]
+    jewelry_items_payload = [{**item, "path": item["image"]} for item in styling_result["selected_items"]]
     
     try:
         tryon = generate_tryon(
