@@ -137,6 +137,8 @@ def try_on():
         "skipped_items": tryon["skipped"],
         "visible_parts": tryon["visible_parts"],
         "attempts": tryon.get("attempts", 1),
+        "validated": tryon.get("validated", True),
+        "validation_issues": tryon.get("validation_issues", []),
     })
 
 
@@ -196,6 +198,8 @@ def try_on_multi():
         "total_applied": len(applied_items),
         "total_requested": len(items_to_apply),
         "attempts": tryon.get("attempts", 1),
+        "validated": tryon.get("validated", True),
+        "validation_issues": tryon.get("validation_issues", []),
     })
 
 
@@ -292,6 +296,8 @@ def generate_style():
         "total_weight_requested": styling_result["total_weight_requested"],
         "total_weight_actual": styling_result["total_weight_actual"],
         "attempts": tryon.get("attempts", 1),
+        "validated": tryon.get("validated", True),
+        "validation_issues": tryon.get("validation_issues", []),
     })
 
 if __name__ == "__main__":

@@ -169,6 +169,11 @@ function setupTryOnPage() {
                 showSkippedWarning(data.skipped_items);
             }
 
+            // Warn if the result couldn't be fully verified
+            if (data.validated === false) {
+                showUnvalidatedWarning("tryon-error", data.validation_issues);
+            }
+
         } catch (err) {
             const errDiv = document.getElementById("tryon-error");
             errDiv.textContent = `⚠️ ${err.message}`;
@@ -379,6 +384,24 @@ function showSkippedWarning(skippedItems) {
     warn.classList.remove("hidden");
 }
 
+function showUnvalidatedWarning(anchorId, issues) {
+    const warnId = `${anchorId}-unvalidated-warning`;
+    let warn = document.getElementById(warnId);
+    if (!warn) {
+        warn = document.createElement("div");
+        warn.id = warnId;
+        warn.className = "skipped-warning";
+        document.getElementById(anchorId).insertAdjacentElement("afterend", warn);
+    }
+    warn.innerHTML = `
+        <div class="skipped-warning-title">⚠ Couldn't fully verify this result</div>
+        <div class="skipped-warning-body">
+            <p class="skipped-hint">${(issues && issues.length) ? issues.join(" ") : "Please double-check the jewelry placement before using this image."}</p>
+        </div>
+    `;
+    warn.classList.remove("hidden");
+}
+
 function showAppliedSummary(items) {
     const container = document.getElementById("tryon-applied-summary");
     const list = document.getElementById("applied-items-list");
@@ -496,6 +519,11 @@ function setupStylingPage() {
             `).join("");
             document.getElementById("style-total-actual").innerText = `${data.total_weight_actual}g / ${data.total_weight_requested}g`;
             detailContainer.classList.remove("hidden");
+
+            // Warn if the result couldn't be fully verified
+            if (data.validated === false) {
+                showUnvalidatedWarning("style-error", data.validation_issues);
+            }
 
         } catch (err) {
             const errDiv = document.getElementById("style-error");

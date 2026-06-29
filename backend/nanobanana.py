@@ -408,26 +408,31 @@ def generate_tryon(
 
     Returns:
       {
-        "image":         PIL.Image,
-        "applied":       list[dict],
-        "skipped":       list[dict],
-        "visible_parts": dict,
-        "attempts":      int,
+        "image":             PIL.Image,
+        "applied":           list[dict],
+        "skipped":           list[dict],
+        "visible_parts":     dict,
+        "attempts":          int,
+        "validated":         bool,        — False if returned despite failing validation twice
+        "validation_issues": list[str],   — issues from the last attempt (empty if validated)
       }
 
-    Raises ValueError if generation fails or validation does not pass
-    within MAX_ATTEMPTS attempts.
+    Raises ValueError only if generation itself fails (no image at all) or
+    if every requested item had to be hard-skipped. Otherwise always returns
+    an image — even an unvalidated one — so the caller can show it with a warning.
     """
     log(f"=== Try-On Request ({len(jewelry_items)} items) ===")
 
     if not GEMINI_API_KEY and not GCP_PROJECT:
         log("WARNING: No credentials — returning original image.")
         return {
-            "image":         base_image,
-            "applied":       [],
-            "skipped":       [{**i, "skip_reason": "API not configured"} for i in jewelry_items],
-            "visible_parts": {},
-            "attempts":      0,
+            "image":             base_image,
+            "applied":           [],
+            "skipped":           [{**i, "skip_reason": "API not configured"} for i in jewelry_items],
+            "visible_parts":     {},
+            "attempts":          0,
+            "validated":         False,
+            "validation_issues": ["API not configured"],
         }
 
     client = _build_client()
@@ -497,11 +502,13 @@ def generate_tryon(
         if validation["valid"]:
             log(f"Validation PASSED on attempt {attempt}")
             return {
-                "image":         result_image,
-                "applied":       applicable,
-                "skipped":       skipped,
-                "visible_parts": visible,
-                "attempts":      attempt,
+                "image":             result_image,
+                "applied":           applicable,
+                "skipped":           skipped,
+                "visible_parts":     visible,
+                "attempts":          attempt,
+                "validated":         True,
+                "validation_issues": [],
             }
 
         last_issues = validation["issues"]
@@ -511,10 +518,16 @@ def generate_tryon(
             feedback = last_issues
             log("Injecting feedback into retry prompt...")
 
-    # All attempts exhausted — raise a descriptive error
-    issues_text = "; ".join(last_issues) if last_issues else "unknown placement error"
-    raise ValueError(
-        f"Jewelry placement could not be verified after {MAX_ATTEMPTS} attempts. "
-        f"Issues: {issues_text}. "
-        "Try a clearer photo with the relevant body parts more visible."
-    )
+    # All attempts exhausted without passing validation — return the last
+    # attempt anyway (it's still a real edit, just unverified) instead of
+    # showing the user nothing. The caller can warn based on "validated".
+    log(f"Returning best-effort result after {MAX_ATTEMPTS} attempts (unvalidated)")
+    return {
+        "image":             last_result,
+        "applied":           applicable,
+        "skipped":           skipped,
+        "visible_parts":     visible,
+        "attempts":          MAX_ATTEMPTS,
+        "validated":         False,
+        "validation_issues": last_issues,
+    }
