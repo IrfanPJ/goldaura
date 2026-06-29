@@ -173,22 +173,26 @@ def _detect_visible_parts(portrait_part: types.Part, client: genai.Client) -> di
     """
     prompt = (
         "Analyze this portrait photo carefully.\n"
-        "For each body region, answer true ONLY if it is clearly visible AND "
-        "unobstructed enough to realistically place jewelry on it.\n\n"
+        "For each body region, default to true if it appears anywhere in frame —\n"
+        "even partially, even if some clothing/hair/jewelry overlaps it. Only answer\n"
+        "false if that region is genuinely out of frame, fully covered, or impossible\n"
+        "to place jewelry on realistically (e.g. a fist hides all fingers).\n\n"
         "Reply with ONLY a JSON object — no explanation, no markdown:\n"
         '{"neck": <bool>, "ears": <bool>, "wrists": <bool>, "fingers": <bool>, "ankles": <bool>}\n\n'
         "Definitions:\n"
-        "• neck    — neck and upper chest exposed enough for a necklace\n"
-        "• ears    — at least one ear visible for earrings\n"
-        "• wrists  — wrist/lower arm visible for a bangle or bracelet\n"
-        "• fingers — individual fingers clearly visible for a ring\n"
-        "            (closed fist / hidden hands / hands in pockets = false)\n"
-        "• ankles  — ankles visible for an anklet\n"
+        "• neck    — any part of the neck or upper chest is in frame (a necklace can\n"
+        "            sit on top of a collar/scoop neckline — clothing does not disqualify it)\n"
+        "• ears    — at least one ear is in frame, even if partly behind hair\n"
+        "• wrists  — wrist or lower arm is in frame\n"
+        "• fingers — at least one hand with separable fingers is in frame\n"
+        "            (closed fist / hidden hands / hands in pockets / hands out of frame = false)\n"
+        "• ankles  — at least one ankle is in frame\n"
     )
     try:
         resp = client.models.generate_content(
             model=DETECTION_MODEL,
             contents=[portrait_part, types.Part.from_text(text=prompt)],
+            config=types.GenerateContentConfig(temperature=0.1),
         )
         result = _parse_json(resp.text.strip())
         if result:
@@ -368,6 +372,7 @@ def _validate_placement(
         resp = client.models.generate_content(
             model=DETECTION_MODEL,
             contents=[portrait_part, result_part, types.Part.from_text(text=prompt)],
+            config=types.GenerateContentConfig(temperature=0.1),
         )
         data = _parse_json(resp.text.strip())
         if data and "items" in data:
